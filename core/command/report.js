@@ -7,25 +7,29 @@ var fs = require('../util/fs');
 var logger = require('../util/logger')('report');
 var compare = require('../util/compare/');
 
-function writeReport (config, reporter) {
+function writeReport (config, reporter, quietLogging) {
   var promises = [];
 
   if (config.report && config.report.indexOf('CI') > -1 && config.ciReport.format === 'junit') {
-    promises.push(writeJunitReport(config, reporter));
+    promises.push(writeJunitReport(config, reporter, quietLogging));
   }
 
-  promises.push(writeBrowserReport(config, reporter));
+  promises.push(writeBrowserReport(config, reporter, quietLogging));
 
   return allSettled(promises);
 }
 
-function writeBrowserReport (config, reporter) {
+function writeBrowserReport (config, reporter, quietLogging) {
   function toAbsolute (p) {
     return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
   }
-  logger.log('Writing browser report');
+  if (!quietLogging) {
+    logger.log('Writing browser report');
+  }
   return fs.copy(config.comparePath, toAbsolute(config.html_report)).then(function () {
-    logger.log('Browser reported copied');
+    if (!quietLogging) {
+      logger.log('Browser reported copied');
+    }
 
     // Fixing URLs in the configuration
     var report = toAbsolute(config.html_report);
@@ -43,7 +47,9 @@ function writeBrowserReport (config, reporter) {
 
     var jsonp = 'report(' + JSON.stringify(reporter, null, 2) + ');';
     return fs.writeFile(toAbsolute(config.compareConfigFileName), jsonp).then(function () {
-      logger.log('Copied configuration to: ' + toAbsolute(config.compareConfigFileName));
+      if (!quietLogging) {
+        logger.log('Copied configuration to: ' + toAbsolute(config.compareConfigFileName));
+      }
     }, function (err) {
       logger.error('Failed configuration copy');
       throw err;
@@ -51,13 +57,15 @@ function writeBrowserReport (config, reporter) {
   }).then(function () {
     if (config.openReport && config.report && config.report.indexOf('browser') > -1) {
       var executeCommand = require('./index');
-      return executeCommand('_openReport', config);
+      return executeCommand('_openReport', config, quietLogging);
     }
   });
 }
 
-function writeJunitReport (config, reporter) {
-  logger.log('Writing jUnit Report');
+function writeJunitReport (config, reporter, quietLogging) {
+  if (!quietLogging) {
+    logger.log('Writing jUnit Report');
+  }
 
   var testSuite = junitWriter.addTestsuite(reporter.testSuite);
 
@@ -85,7 +93,9 @@ function writeJunitReport (config, reporter) {
         return reject(err);
       }
 
-      logger.success('jUnit report written to: ' + destination);
+      if (!quietLogging) {
+        logger.success('jUnit report written to: ' + destination);
+      }
 
       resolve();
     });
@@ -93,14 +103,14 @@ function writeJunitReport (config, reporter) {
 }
 
 module.exports = {
-  execute: function (config) {
-    return compare(config).then(function (report) {
+  execute: function (config, quietLogging) {
+    return compare(config, quietLogging).then(function (report) {
       var failed = report.failed();
       logger.log('Test completed...');
       logger.log(chalk.green(report.passed() + ' Passed'));
       logger.log(chalk[(failed ? 'red' : 'green')](+failed + ' Failed'));
 
-      return writeReport(config, report).then(function (results) {
+      return writeReport(config, report, quietLogging).then(function (results) {
         for (var i = 0; i < results.length; i++) {
           if (results[i].state !== 'fulfilled') {
             logger.error('Failed writing report with error: ' + results[i].value);

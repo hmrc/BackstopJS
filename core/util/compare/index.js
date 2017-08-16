@@ -10,7 +10,7 @@ var storeFailedDiffStub = require('./store-failed-diff-stub.js');
 
 var ASYNC_COMPARE_LIMIT = 20;
 
-function comparePair(pair, report, config) {
+function comparePair(pair, report, config, quietLogging) {
   var Test = report.addTest(pair);
 
   var referencePath = path.join(config.projectPath, pair.reference);
@@ -34,15 +34,17 @@ function comparePair(pair, report, config) {
   }
 
   var resembleOutputSettings = config.resembleOutputOptions;
-  return compareImages(referencePath, testPath, pair, resembleOutputSettings, Test);
+  return compareImages(referencePath, testPath, pair, resembleOutputSettings, Test, quietLogging);
 }
 
-function compareImages(referencePath, testPath, pair, resembleOutputSettings, Test) {
+function compareImages(referencePath, testPath, pair, resembleOutputSettings, Test, quietLogging) {
   return compare(referencePath, testPath, pair.misMatchThreshold, resembleOutputSettings, pair.requireSameDimensions)
     .then(function (data) {
       pair.diff = data;
       Test.status = 'pass';
-      logger.success('OK: ' + pair.label + ' ' + pair.fileName);
+      if (!quietLogging) {
+        logger.success('OK: ' + pair.label + ' ' + pair.fileName);
+      }
       data = null;
       pair.diff.getDiffImage = null;
       return pair;
@@ -61,12 +63,12 @@ function compareImages(referencePath, testPath, pair, resembleOutputSettings, Te
     });
 }
 
-module.exports = function (config) {
+module.exports = function (config, quietLogging) {
   var compareConfig = require(config.tempCompareConfigFileName).compareConfig;
   var report = new Reporter(config.ciReport.testSuiteName);
   var asyncCompareLimit = config.asyncCompareLimit || ASYNC_COMPARE_LIMIT;
 
-  return map(compareConfig.testPairs, pair => comparePair(pair, report, config), {concurrency: asyncCompareLimit})
+  return map(compareConfig.testPairs, pair => comparePair(pair, report, config, quietLogging), {concurrency: asyncCompareLimit})
     .then(
       () => report,
       e => logger.error('The comparison failed with error: ' + e)

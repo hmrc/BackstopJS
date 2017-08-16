@@ -29,6 +29,8 @@ var exposedCommandNames = [
   'approve'
 ];
 
+var quietLogging;
+
 /* Used to convert an array of objects {name, execute} to a unique object {[name]: execute} */
 function toObjectReducer (object, command) {
   object[command.name] = command.execute;
@@ -45,10 +47,12 @@ var commands = commandNames
   .map(function definitionToExecution (command) {
     return {
       name: command.name,
-      execute: function execute (config) {
-        logger.info('Executing core for `' + command.name + '`');
+      execute: function execute (config, quietLogging) {
+        if (!quietLogging) {
+          logger.info('Executing core for `' + command.name + '`');
+        }
 
-        var promise = command.commandDefinition.execute(config);
+        var promise = command.commandDefinition.execute(config, quietLogging);
 
         // If the command didn't return a promise, assume it resolved already
         if (!promise) {
@@ -64,7 +68,9 @@ var commands = commandNames
         });
 
         return promise.then(function (result) {
-          logger.success('Command `' + command.name + '` sucessfully executed');
+          if (!quietLogging) {
+            logger.success('Command `' + command.name + '` sucessfully executed');
+          }
           return result;
         });
       }
@@ -84,7 +90,8 @@ var exposedCommands = exposedCommandNames
   })
   .reduce(toObjectReducer, {});
 
-function execute (commandName, config) {
+function execute (commandName, config, quiet) {
+  quietLogging = quiet;
   if (!exposedCommands.hasOwnProperty(commandName)) {
     if (commandName.charAt(0) === '_' && commands.hasOwnProperty(commandName.substring(1))) {
       commandName = commandName.substring(1);
@@ -93,7 +100,7 @@ function execute (commandName, config) {
     }
   }
 
-  return commands[commandName](config);
+  return commands[commandName](config, quietLogging);
 }
 
 module.exports = execute;
