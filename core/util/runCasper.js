@@ -1,7 +1,7 @@
 var spawn = require('child_process').spawn;
 var findExecutable = require('./findExecutable');
 
-function getCasperArgs (config, tests) {
+function getCasperArgs (config, tests, quietLogging) {
   var args = [];
   if (/slimer/.test(config.engine)) {
     args = ['--engine=slimerjs'];
@@ -19,16 +19,16 @@ function getCasperArgs (config, tests) {
     args = args.concat(['--user=' + config.args.user, '--password=' + config.args.password]);
   }
 
-  return tests.concat(args);
+  return tests.concat(args, [quietLogging]);
 }
 
-module.exports = function (config, tests) {
-  var casperArgs = getCasperArgs(config, tests);
+module.exports = function (config, tests, quietLogging) {
+  var casperArgs = getCasperArgs(config, tests, quietLogging);
   if (config.captureConfigFileName) {
     casperArgs[casperArgs.length] = '--captureConfigFileName=' + config.captureConfigFileName;
   }
 
-  console.log('\nRunning CasperJS with: ', casperArgs);
+  console.log('\nStarting run of Visual Regressions Tests\n');
 
   process.env.PHANTOMJS_EXECUTABLE = findExecutable('phantomjs-prebuilt', 'phantomjs');
 

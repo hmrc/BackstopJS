@@ -53,17 +53,19 @@ function writeReferenceCreateConfig (config, isReference) {
   return fs.writeFile(config.captureConfigFileName, JSON.stringify(configJSON));
 }
 
-module.exports = function (config, isReference) {
+module.exports = function (config, isReference, quietLogging) {
   return writeReferenceCreateConfig(config, isReference).then(function () {
     var tests = [path.join(config.backstop, GENERATE_BITMAPS_SCRIPT)];
-    var casperChild = runCasper(config, tests);
+    var casperChild = runCasper(config, tests, quietLogging);
 
     return new Promise(function (resolve, reject) {
       casperChild.on('close', function (code) {
         var success = code === 0; // Will be 1 in the event of failure
         var result = (success) ? 'Bitmap file generation completed.' : 'Testing script failed with code: ' + code;
 
-        console.log('\n' + result);
+        if (!quietLogging) {
+          console.log('\n' + result);
+        }
 
         // exit if there was some kind of failure in the casperChild process
         if (code !== 0) {

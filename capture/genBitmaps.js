@@ -6,6 +6,7 @@ var cwd = fs.workingDirectory;
 var system = require('system');
 var args = system.args;
 var val, index, captureConfigFileName;
+
 if (args.length !== 1) {
   args.forEach(function (arg, i) {
     arg = arg.split('--');
@@ -115,6 +116,7 @@ function getFilename (scenarioIndex, scenarioLabel, selectorIndex, selectorLabel
 
 function processScenario (casper, scenario, scenarioOrVariantLabel, scenarioLabel, viewports, bitmapsReferencePath, bitmapsTestPath, screenshotDateTime) {
   var scriptTimeout = 20000;
+  var quietLogging = args[4] === 'true';
 
   if (casper.cli.options.user && casper.cli.options.password) {
     console.log('Auth User via CLI: ' + casper.cli.options.user);
@@ -147,7 +149,10 @@ function processScenario (casper, scenario, scenarioOrVariantLabel, scenarioLabe
         },
         function () { // on done
           consoleBuffer = '';
-          casper.echo('Ready event received.');
+
+          if (!quietLogging) {
+            casper.echo('Ready event received.');
+          }
         },
         function () {
           casper.echo('Error while waiting for ready event.');
@@ -158,7 +163,9 @@ function processScenario (casper, scenario, scenarioOrVariantLabel, scenarioLabe
     });
 
     casper.then(function () {
-      this.echo('Current location is ' + url, 'info');
+      if (!quietLogging) {
+        this.echo('Current location is ' + url, 'info');
+      }
 
       if (config.debug) {
         var src = this.evaluate(function () {
@@ -183,7 +190,11 @@ function processScenario (casper, scenario, scenarioOrVariantLabel, scenarioLabe
     });
 
     this.then(function () {
-      this.echo('Capturing screenshots for ' + makeSafe(vp.name) + ' (' + (vp.width || vp.viewport.width) + 'x' + (vp.height || vp.viewport.height) + ')', 'info');
+      if (quietLogging) {
+        this.echo('Capturing screenshot for ' + scenarioLabel.replace('-', ' '));
+      } else {
+        this.echo('Capturing screenshots for ' + makeSafe(vp.name) + ' (' + (vp.width || vp.viewport.width) + 'x' + (vp.height || vp.viewport.height) + ')', 'info');
+      }
 
       // HIDE SELECTORS WE WANT TO AVOID
       if (scenario.hasOwnProperty('hideSelectors')) {

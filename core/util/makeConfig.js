@@ -10,7 +10,7 @@ function projectPath (config) {
   return process.cwd();
 }
 
-function loadProjectConfig (command, options, config) {
+function loadProjectConfig (command, options, config, quietLogging) {
   // TEST REPORT FILE NAME
   var customTestReportFileName = options && (options.testReportFileName || null);
   if (customTestReportFileName) {
@@ -40,7 +40,9 @@ function loadProjectConfig (command, options, config) {
       userConfig = options.config;
     } else if (config.backstopConfigFileName) {
       try {
-        console.log('BackstopJS loading config: ', config.backstopConfigFileName, '\n');
+        if (!quietLogging) {
+          console.log('BackstopJS loading config: ', config.backstopConfigFileName, '\n');
+        }
         userConfig = require(config.backstopConfigFileName);
       } catch (e) {
         console.error('Error ' + e);
@@ -52,7 +54,7 @@ function loadProjectConfig (command, options, config) {
   return userConfig;
 }
 
-function makeConfig (command, options) {
+function makeConfig (command, options, quietLogging) {
   var config = {};
 
   config.args = options || {};
@@ -60,7 +62,7 @@ function makeConfig (command, options) {
   config.backstop = path.join(__dirname, '../..');
   config.projectPath = projectPath(config);
 
-  var userConfig = loadProjectConfig(command, options, config);
+  var userConfig = loadProjectConfig(command, options, config, quietLogging);
 
   return extendConfig(config, userConfig);
 }
